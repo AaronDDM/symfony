@@ -27,9 +27,10 @@ class Configuration
     /**
      * Generates the configuration tree.
      *
+     * @param Boolean $kernelDebug
      * @return \Symfony\Component\Config\Definition\NodeInterface
      */
-    public function getConfigTree()
+    public function getConfigTree($kernelDebug)
     {
         $treeBuilder = new TreeBuilder();
         $rootNode = $treeBuilder->root('swiftmailer', 'array');
@@ -64,8 +65,10 @@ class Configuration
                 ->scalarNode('type')->defaultValue('file')->end()
                 ->scalarNode('path')->defaultValue('%kernel.cache_dir%/swiftmailer/spool')->end()
             ->end()
-            ->scalarNode('delivery_adress')->end()
-            ->booleanNode('disable_delivery')->end();
+            ->scalarNode('delivery_address')->end()
+            ->booleanNode('disable_delivery')->end()
+            ->booleanNode('logging')->defaultValue($kernelDebug)->end()
+        ;
 
         return $treeBuilder->buildTree();
     }
