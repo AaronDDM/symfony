@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Tests\Component\Validator;
+namespace Symfony\Tests\Component\Validator\Constraints;
 
 use Symfony\Component\Validator\Constraints\Min;
 use Symfony\Component\Validator\Constraints\MinValidator;
@@ -84,5 +84,14 @@ class MinValidatorTest extends \PHPUnit_Framework_TestCase
             '{{ value }}' => 9,
             '{{ limit }}' => 10,
         ));
+    }
+
+    public function testConstraintGetDefaultOption()
+    {
+        $constraint = new Min(array(
+            'limit' => 10,
+        ));
+
+        $this->assertEquals('limit', $constraint->getDefaultOption());
     }
 }

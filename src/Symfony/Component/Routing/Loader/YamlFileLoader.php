@@ -21,6 +21,8 @@ use Symfony\Component\Config\Loader\FileLoader;
  * YamlFileLoader loads Yaml routing files.
  *
  * @author Fabien Potencier <fabien@symfony.com>
+ *
+ * @api
  */
 class YamlFileLoader extends FileLoader
 {
@@ -37,12 +39,14 @@ class YamlFileLoader extends FileLoader
      * @return RouteCollection A RouteCollection instance
      *
      * @throws \InvalidArgumentException When route can't be parsed
+     *
+     * @api
      */
     public function load($file, $type = null)
     {
         $path = $this->locator->locate($file);
 
-        $config = $this->loadFile($path);
+        $config = Yaml::parse($path);
 
         $collection = new RouteCollection();
         $collection->addResource(new FileResource($path));
@@ -63,12 +67,10 @@ class YamlFileLoader extends FileLoader
             if (isset($config['resource'])) {
                 $type = isset($config['type']) ? $config['type'] : null;
                 $prefix = isset($config['prefix']) ? $config['prefix'] : null;
-                $this->currentDir = dirname($path);
-                $collection->addCollection($this->import($config['resource'], $type), $prefix);
-            } elseif (isset($config['pattern'])) {
-                $this->parseRoute($collection, $name, $config, $path);
+                $this->setCurrentDir(dirname($path));
+                $collection->addCollection($this->import($config['resource'], $type, false, $file), $prefix);
             } else {
-                throw new \InvalidArgumentException(sprintf('Unable to parse the "%s" route.', $name));
+                $this->parseRoute($collection, $name, $config, $path);
             }
         }
 
@@ -82,6 +84,8 @@ class YamlFileLoader extends FileLoader
      * @param string $type     The resource type
      *
      * @return Boolean True if this class supports the given resource, false otherwise
+     *
+     * @api
      */
     public function supports($resource, $type = null)
     {
@@ -111,18 +115,6 @@ class YamlFileLoader extends FileLoader
         $route = new Route($config['pattern'], $defaults, $requirements, $options);
 
         $collection->add($name, $route);
-    }
-
-    /**
-     * Loads a Yaml file.
-     *
-     * @param string $file A Yaml file path
-     *
-     * @return array
-     */
-    protected function loadFile($file)
-    {
-        return Yaml::load($file);
     }
 
     /**

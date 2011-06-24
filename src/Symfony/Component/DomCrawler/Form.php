@@ -17,47 +17,29 @@ use Symfony\Component\DomCrawler\Field\FormField;
  * Form represents an HTML form.
  *
  * @author Fabien Potencier <fabien@symfony.com>
+ *
+ * @api
  */
-class Form implements \ArrayAccess
+class Form extends Link implements \ArrayAccess
 {
     private $document;
     private $button;
-    private $node;
     private $fields;
-    private $method;
-    private $host;
-    private $path;
-    private $base;
 
     /**
      * Constructor.
      *
-     * @param \DOMNode $node   A \DOMNode instance
-     * @param string   $method The method to use for the link (if null, it defaults to the method defined by the form)
-     * @param string   $host   The base URI to use for absolute links (like http://localhost)
-     * @param string   $path   The base path for relative links (/ by default)
-     * @param string   $base   An optional base href for generating the submit uri
+     * @param \DOMNode $node       A \DOMNode instance
+     * @param string   $currentUri The URI of the page where the form is embedded
+     * @param string   $method     The method to use for the link (if null, it defaults to the method defined by the form)
      *
      * @throws \LogicException if the node is not a button inside a form tag
+     *
+     * @api
      */
-    public function __construct(\DOMNode $node, $method = null, $host = null, $path = '/', $base = null)
+    public function __construct(\DOMNode $node, $currentUri, $method = null)
     {
-        $this->button = $node;
-        if ('button' == $node->nodeName || ('input' == $node->nodeName && in_array($node->getAttribute('type'), array('submit', 'button', 'image')))) {
-            do {
-                // use the ancestor form element
-                if (null === $node = $node->parentNode) {
-                    throw new \LogicException('The selected node does not have a form ancestor.');
-                }
-            } while ('form' != $node->nodeName);
-        } else {
-            throw new \LogicException(sprintf('Unable to submit on a "%s" tag.', $node->nodeName));
-        }
-        $this->node = $node;
-        $this->method = $method;
-        $this->host = $host;
-        $this->path = empty($path) ? '/' : $path;
-        $this->base = $base;
+        parent::__construct($node, $currentUri, $method);
 
         $this->initialize();
     }
@@ -76,6 +58,8 @@ class Form implements \ArrayAccess
      * Sets the value of the fields.
      *
      * @param array $values An array of field values
+     *
+     * @api
      */
     public function setValues(array $values)
     {
@@ -92,6 +76,8 @@ class Form implements \ArrayAccess
      * The returned array does not include file fields (@see getFiles).
      *
      * @return array An array of field values.
+     *
+     * @api
      */
     public function getValues()
     {
@@ -109,10 +95,12 @@ class Form implements \ArrayAccess
      * Gets the file field values.
      *
      * @return array An array of file field values.
+     *
+     * @api
      */
     public function getFiles()
     {
-        if (!in_array($this->getMethod(), array('post', 'put', 'delete'))) {
+        if (!in_array($this->getMethod(), array('POST', 'PUT', 'DELETE'))) {
             return array();
         }
 
@@ -133,6 +121,8 @@ class Form implements \ArrayAccess
      * (like foo[bar] to arrays) like PHP does.
      *
      * @return array An array of field values.
+     *
+     * @api
      */
     public function getPhpValues()
     {
@@ -149,6 +139,8 @@ class Form implements \ArrayAccess
      * (like foo[bar] to arrays) like PHP does.
      *
      * @return array An array of field values.
+     *
+     * @api
      */
     public function getPhpFiles()
     {
@@ -165,40 +157,25 @@ class Form implements \ArrayAccess
      * This method merges the value if the method is GET to mimics
      * browser behavior.
      *
-     * @param Boolean $absolute Whether to return an absolute URI or not (this only works if a base URI has been provided)
-     *
      * @return string The URI
+     *
+     * @api
      */
-    public function getUri($absolute = true)
+    public function getUri()
     {
-        $uri = $this->node->getAttribute('action');
-        $urlHaveScheme = 'http' === substr($uri, 0, 4);
+        $uri = parent::getUri();
 
-        if (!$uri || '#' === $uri) {
-            $uri = $this->path;
-        }
-
-        if (!in_array($this->getMethod(), array('post', 'put', 'delete')) && $queryString = http_build_query($this->getValues(), null, '&')) {
+        if (!in_array($this->getMethod(), array('POST', 'PUT', 'DELETE')) && $queryString = http_build_query($this->getValues(), null, '&')) {
             $sep = false === strpos($uri, '?') ? '?' : '&';
             $uri .= $sep.$queryString;
         }
 
-        $path = $this->path;
-        if ('?' !== substr($uri, 0, 1) && '/' !== substr($path, -1)) {
-            $path = substr($path, 0, strrpos($path, '/') + 1);
-        }
-
-        if (!$this->base && $uri && '/' !== $uri[0] && !$urlHaveScheme) {
-            $uri = $path.$uri;
-        } elseif ($this->base) {
-            $uri = $this->base.$uri;
-        }
-
-        if (!$this->base && $absolute && null !== $this->host && !$urlHaveScheme) {
-            return $this->host.$uri;
-        }
-
         return $uri;
+    }
+
+    protected function getRawUri()
+    {
+        return $this->node->getAttribute('action');
     }
 
     /**
@@ -207,6 +184,8 @@ class Form implements \ArrayAccess
      * If no method is defined in the form, GET is returned.
      *
      * @return string The method
+     *
+     * @api
      */
     public function getMethod()
     {
@@ -214,7 +193,7 @@ class Form implements \ArrayAccess
             return $this->method;
         }
 
-        return $this->node->getAttribute('method') ? strtolower($this->node->getAttribute('method')) : 'get';
+        return $this->node->getAttribute('method') ? strtoupper($this->node->getAttribute('method')) : 'GET';
     }
 
     /**
@@ -223,6 +202,8 @@ class Form implements \ArrayAccess
      * @param string $name The field name
      *
      * @return Boolean true if the field exists, false otherwise
+     *
+     * @api
      */
     public function has($name)
     {
@@ -233,6 +214,8 @@ class Form implements \ArrayAccess
      * Removes a field from the form.
      *
      * @param string $name The field name
+     *
+     * @api
      */
     public function remove($name)
     {
@@ -247,6 +230,8 @@ class Form implements \ArrayAccess
      * @return FormField The field instance
      *
      * @throws \InvalidArgumentException When field is not present in this form
+     *
+     * @api
      */
     public function get($name)
     {
@@ -260,9 +245,11 @@ class Form implements \ArrayAccess
     /**
      * Sets a named field.
      *
-     * @param string $name The field name
+     * @param Field\FormField $field The field
      *
      * @return FormField The field instance
+     *
+     * @api
      */
     public function set(Field\FormField $field)
     {
@@ -273,6 +260,8 @@ class Form implements \ArrayAccess
      * Gets all fields.
      *
      * @return array An array of fields
+     *
+     * @api
      */
     public function all()
     {
@@ -373,5 +362,22 @@ class Form implements \ArrayAccess
     public function offsetUnset($name)
     {
         $this->remove($name);
+    }
+
+    protected function setNode(\DOMNode $node)
+    {
+        $this->button = $node;
+        if ('button' == $node->nodeName || ('input' == $node->nodeName && in_array($node->getAttribute('type'), array('submit', 'button', 'image')))) {
+            do {
+                // use the ancestor form element
+                if (null === $node = $node->parentNode) {
+                    throw new \LogicException('The selected node does not have a form ancestor.');
+                }
+            } while ('form' != $node->nodeName);
+        } else {
+            throw new \LogicException(sprintf('Unable to submit on a "%s" tag.', $node->nodeName));
+        }
+
+        $this->node = $node;
     }
 }

@@ -11,12 +11,12 @@
 
 namespace Symfony\Component\HttpKernel;
 
-use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\BrowserKit\Client as BaseClient;
 use Symfony\Component\BrowserKit\Request as DomRequest;
 use Symfony\Component\BrowserKit\Response as DomResponse;
+use Symfony\Component\BrowserKit\Cookie as DomCookie;
 use Symfony\Component\BrowserKit\History;
 use Symfony\Component\BrowserKit\CookieJar;
 
@@ -90,7 +90,7 @@ EOF;
     /**
      * Converts the BrowserKit request to a HttpKernel request.
      *
-     * @param Request $request A Request instance
+     * @param DomRequest $request A Request instance
      *
      * @return Request A Request instance
      */
@@ -120,8 +120,15 @@ EOF;
             if (is_array($value)) {
                 $filtered[$key] = $this->filterFiles($value);
             } elseif ($value instanceof UploadedFile) {
-                // create an already-moved uploaded file
-                $filtered[$key] = new UploadedFile($value->getPath(), $value->getName(), $value->getMimeType(), $value->getSize(), $value->getError(), true);
+                // Create a test mode UploadedFile
+                $filtered[$key] = new UploadedFile(
+                    $value->getPathname(),
+                    $value->getClientOriginalName(),
+                    $value->getClientMimeType(),
+                    $value->getClientSize(),
+                    $value->getError(),
+                    true
+                );
             } else {
                 $filtered[$key] = $value;
             }
@@ -139,6 +146,15 @@ EOF;
      */
     protected function filterResponse($response)
     {
-        return new DomResponse($response->getContent(), $response->getStatusCode(), $response->headers->all());
+        $headers = $response->headers->all();
+        if ($response->headers->getCookies()) {
+            $cookies = array();
+            foreach ($response->headers->getCookies() as $cookie) {
+                $cookies[] = new DomCookie($cookie->getName(), $cookie->getValue(), $cookie->getExpiresTime(), $cookie->getPath(), $cookie->getDomain(), $cookie->isSecure(), $cookie->isHttpOnly());
+            }
+            $headers['Set-Cookie'] = implode(', ', $cookies);
+        }
+
+        return new DomResponse($response->getContent(), $response->getStatusCode(), $headers);
     }
 }

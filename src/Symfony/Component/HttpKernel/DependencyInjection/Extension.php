@@ -22,8 +22,7 @@ use Symfony\Component\DependencyInjection\Container;
  */
 abstract class Extension implements ExtensionInterface
 {
-    protected $classes = array();
-    protected $classMap = array();
+    private $classes = array();
 
     /**
      * Gets the classes to cache.
@@ -40,29 +39,9 @@ abstract class Extension implements ExtensionInterface
      *
      * @param array $classes An array of classes
      */
-    protected function addClassesToCompile(array $classes)
+    public function addClassesToCompile(array $classes)
     {
         $this->classes = array_merge($this->classes, $classes);
-    }
-
-    /**
-     * Gets the autoload class map.
-     *
-     * @return array An array of classes
-     */
-    public function getAutoloadClassMap()
-    {
-        return $this->classMap;
-    }
-
-    /**
-     * Adds classes to the autoload class map.
-     *
-     * @param array $classes An array of classes
-     */
-    public function addClassesToAutoloadMap(array $classes)
-    {
-        $this->classMap = array_merge($this->classMap, $classes);
     }
 
     /**
@@ -82,13 +61,24 @@ abstract class Extension implements ExtensionInterface
      */
     public function getNamespace()
     {
-        return false;
+        return 'http://example.org/schema/dic/'.$this->getAlias();
     }
 
     /**
      * Returns the recommended alias to use in XML.
      *
      * This alias is also the mandatory prefix to use when using YAML.
+     *
+     * This convention is to remove the "Extension" postfix from the class
+     * name and then lowercase and underscore the result. So:
+     *
+     *     AcmeHelloExtension
+     *
+     * becomes
+     *
+     *     acme_hello
+     *
+     * This can be overridden in a sub-class to specify the alias manually.
      *
      * @return string The alias
      */

@@ -382,7 +382,7 @@ class HttpCacheTest extends HttpCacheTestCase
         $this->assertTraceNotContains('store');
     }
 
-    public function testCachesResponesWithExplicitNoCacheDirective()
+    public function testCachesResponsesWithExplicitNoCacheDirective()
     {
         $time = \DateTime::createFromFormat('U', time() + 5);
         $this->setNextResponse(200, array('Expires' => $time->format(DATE_RFC2822), 'Cache-Control' => 'public, no-cache'));
@@ -763,6 +763,26 @@ class HttpCacheTest extends HttpCacheTestCase
         $this->assertEquals(strlen('Hello World'), $this->response->headers->get('Content-Length'));
     }
 
+    public function testSendsNoContentWhenFresh()
+    {
+        $time = \DateTime::createFromFormat('U', time());
+        $that = $this;
+        $this->setNextResponse(200, array(), 'Hello World', function ($request, $response) use ($that, $time)
+        {
+            $response->headers->set('Cache-Control', 'public, max-age=10');
+            $response->headers->set('Last-Modified', $time->format(DATE_RFC2822));
+        });
+
+        $this->request('GET', '/');
+        $this->assertHttpKernelIsCalled();
+        $this->assertEquals('Hello World', $this->response->getContent());
+
+        $this->request('GET', '/', array('HTTP_IF_MODIFIED_SINCE' => $time->format(DATE_RFC2822)));
+        $this->assertHttpKernelIsNotCalled();
+        $this->assertEquals(304, $this->response->getStatusCode());
+        $this->assertEquals('', $this->response->getContent());
+    }
+
     public function testInvalidatesCachedResponsesOnPost()
     {
         $this->setNextResponse(200, array(), 'Hello World', function ($request, $response)
@@ -923,7 +943,9 @@ class HttpCacheTest extends HttpCacheTestCase
 
         $this->request('GET', '/', array(), array(), true);
         $this->assertEquals("Hello World! My name is Bobby.", $this->response->getContent());
-        $this->assertEquals(100, $this->response->getTtl());
+
+        // check for 100 or 99 as the test can be executed after a second change
+        $this->assertTrue(in_array($this->response->getTtl(), array(99, 100)));
     }
 
     public function testEsiCacheForceValidation()

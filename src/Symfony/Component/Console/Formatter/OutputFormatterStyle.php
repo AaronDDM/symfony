@@ -15,6 +15,8 @@ namespace Symfony\Component\Console\Formatter;
  * Formatter style class for defining styles.
  *
  * @author Konstantin Kudryashov <ever.zet@gmail.com>
+ *
+ * @api
  */
 class OutputFormatterStyle implements OutputFormatterStyleInterface
 {
@@ -56,6 +58,8 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
      * @param   string  $foreground     style foreground color name
      * @param   string  $background     style background color name
      * @param   array   $options        style options
+     *
+     * @api
      */
     public function __construct($foreground = null, $background = null, array $options = array())
     {
@@ -74,6 +78,8 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
      * Sets style foreground color.
      *
      * @param   string  $color  color name
+     *
+     * @api
      */
     public function setForeground($color = null)
     {
@@ -98,6 +104,8 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
      * Sets style background color.
      *
      * @param   string  $color  color name
+     *
+     * @api
      */
     public function setBackground($color = null)
     {
@@ -122,6 +130,8 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
      * Sets some specific style option.
      *
      * @param   string  $option     option name
+     *
+     * @api
      */
     public function setOption($option)
     {
@@ -174,11 +184,13 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
     }
 
     /**
-     * Returns begin style code.
+     * Applies the style to a given text.
      *
-     * @return  string
+     * @param string $text The text to style
+     *
+     * @return string
      */
-    public function getBeginStyle()
+    public function apply($text)
     {
         $codes = array();
 
@@ -192,16 +204,6 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
             $codes = array_merge($codes, $this->options);
         }
 
-        return "\033[" . implode(';', $codes) . 'm';
-    }
-
-    /**
-     * Returns end style code.
-     *
-     * @return  string
-     */
-    public function getEndStyle()
-    {
-        return "\033[0m";
+        return sprintf("\033[%sm%s\033[0m", implode(';', $codes), $text);
     }
 }

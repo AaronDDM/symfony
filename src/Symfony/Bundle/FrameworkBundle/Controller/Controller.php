@@ -14,6 +14,12 @@ namespace Symfony\Bundle\FrameworkBundle\Controller;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\DependencyInjection\ContainerAware;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Form\FormTypeInterface;
+use Symfony\Component\Form\Form;
+use Symfony\Component\Form\FormBuilder;
+use Symfony\Bundle\DoctrineBundle\Registry;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Controller is a simple implementation of a Controller.
@@ -27,9 +33,9 @@ class Controller extends ContainerAware
     /**
      * Generates a URL from the given parameters.
      *
-     * @param  string  $name       The name of the route
-     * @param  array   $parameters An array of parameters
-     * @param  Boolean $absolute   Whether to generate an absolute URL
+     * @param string  $name       The name of the route
+     * @param array   $parameters An array of parameters
+     * @param Boolean $absolute   Whether to generate an absolute URL
      *
      * @return string The generated URL
      */
@@ -90,6 +96,71 @@ class Controller extends ContainerAware
     public function render($view, array $parameters = array(), Response $response = null)
     {
         return $this->container->get('templating')->renderResponse($view, $parameters, $response);
+    }
+
+    /**
+     * Returns a NotFoundHttpException.
+     *
+     * This will result in a 404 response code. Usage example:
+     *
+     *     throw $this->createNotFoundException('Page not found!');
+     *
+     * @return NotFoundHttpException
+     */
+    public function createNotFoundException($message = 'Not Found', \Exception $previous = null)
+    {
+        return new NotFoundHttpException($message, $previous);
+    }
+
+    /**
+     * Creates and returns a Form instance from the type of the form.
+     *
+     * @param string|FormTypeInterface $type    The built type of the form
+     * @param mixed $data                       The initial data for the form
+     * @param array $options                    Options for the form
+     *
+     * @return Form
+     */
+    public function createForm($type, $data = null, array $options = array())
+    {
+        return $this->get('form.factory')->create($type, $data, $options);
+    }
+
+    /**
+     * Creates and returns a form builder instance
+     *
+     * @param mixed $data               The initial data for the form
+     * @param array $options            Options for the form
+     *
+     * @return FormBuilder
+     */
+    public function createFormBuilder($data = null, array $options = array())
+    {
+        return $this->get('form.factory')->createBuilder('form', $data, $options);
+    }
+
+    /**
+     * Shortcut to return the request service.
+     *
+     * @return Request
+     */
+    public function getRequest()
+    {
+        return $this->get('request');
+    }
+
+    /**
+     * Shortcut to return the Doctrine Registry service.
+     *
+     * @return Registry
+     */
+    public function getDoctrine()
+    {
+        if (!$this->has('doctrine')) {
+            throw new \LogicException('The DoctrineBundle is not installed in your application.');
+        }
+
+        return $this->get('doctrine');
     }
 
     /**

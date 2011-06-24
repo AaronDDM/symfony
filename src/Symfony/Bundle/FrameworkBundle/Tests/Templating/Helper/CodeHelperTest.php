@@ -10,13 +10,14 @@
  */
 
 namespace Symfony\Bundle\FrameworkBundle\Tests\Templating\Helper;
+
 use Symfony\Bundle\FrameworkBundle\Templating\Helper\CodeHelper;
 
-class TemplateTest extends \PHPUnit_Framework_TestCase
+class CodeHelperTest extends \PHPUnit_Framework_TestCase
 {
     protected static $helper;
 
-    public static function setUpBeforeClass()
+    static public function setUpBeforeClass()
     {
         self::$helper = new CodeHelper('format', '/root');
     }
@@ -54,5 +55,9 @@ class TemplateTest extends \PHPUnit_Framework_TestCase
             array('Method', '<abbr title="Method">Method</abbr>()')
         );
     }
-    
+
+    public function testGetName()
+    {
+        $this->assertEquals('code', self::$helper->getName());
+    }
 }

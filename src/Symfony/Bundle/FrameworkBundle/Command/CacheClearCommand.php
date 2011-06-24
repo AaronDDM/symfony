@@ -23,7 +23,7 @@ use Symfony\Component\Finder\Finder;
  * @author Francis Besset <francis.besset@gmail.com>
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class CacheClearCommand extends Command
+class CacheClearCommand extends ContainerAwareCommand
 {
     /**
      * @see Command
@@ -34,7 +34,6 @@ class CacheClearCommand extends Command
             ->setName('cache:clear')
             ->setDefinition(array(
                 new InputOption('no-warmup', '', InputOption::VALUE_NONE, 'Do not warm up the cache'),
-                new InputOption('without-debug', '', InputOption::VALUE_NONE, 'If the cache is warmed up, whether to disable debugging or not'),
             ))
             ->setDescription('Clear the cache')
             ->setHelp(<<<EOF
@@ -42,7 +41,7 @@ The <info>cache:clear</info> command clears the application cache for a given en
 and debug mode:
 
 <info>./app/console cache:clear --env=dev</info>
-<info>./app/console cache:clear --env=prod --without-debug</info>
+<info>./app/console cache:clear --env=prod --no-debug</info>
 EOF
             )
         ;
@@ -53,11 +52,11 @@ EOF
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $realCacheDir = $this->container->getParameter('kernel.cache_dir');
+        $realCacheDir = $this->getContainer()->getParameter('kernel.cache_dir');
         $oldCacheDir  = $realCacheDir.'_old';
 
         if (!is_writable($realCacheDir)) {
-            throw new \RuntimeException(sprintf('Unable to write in the "%s" directory', $this->realCacheDir));
+            throw new \RuntimeException(sprintf('Unable to write in the "%s" directory', $realCacheDir));
         }
 
         if ($input->getOption('no-warmup')) {
@@ -65,20 +64,20 @@ EOF
         } else {
             $warmupDir = $realCacheDir.'_new';
 
-            $this->warmup(!$input->getOption('without-debug'), $warmupDir);
+            $this->warmup($warmupDir);
 
             rename($realCacheDir, $oldCacheDir);
             rename($warmupDir, $realCacheDir);
         }
 
-        $this->container->get('filesystem')->remove($oldCacheDir);
+        $this->getContainer()->get('filesystem')->remove($oldCacheDir);
     }
 
-    protected function warmup($debug, $warmupDir)
+    protected function warmup($warmupDir)
     {
-        $this->container->get('filesystem')->remove($warmupDir);
+        $this->getContainer()->get('filesystem')->remove($warmupDir);
 
-        $kernel = $this->getTempKernel($this->container->get('kernel'), $debug, $warmupDir);
+        $kernel = $this->getTempKernel($this->getContainer()->get('kernel'), $warmupDir);
         $kernel->boot();
 
         $warmer = $kernel->getContainer()->get('cache_warmer');
@@ -95,7 +94,7 @@ EOF
         }
     }
 
-    protected function getTempKernel(KernelInterface $parent, $debug, $warmupDir)
+    protected function getTempKernel(KernelInterface $parent, $warmupDir)
     {
         $parentClass = get_class($parent);
 
@@ -132,13 +131,13 @@ namespace $namespace
     }
 }
 EOF;
-        $this->container->get('filesystem')->mkdirs($warmupDir);
+        $this->getContainer()->get('filesystem')->mkdir($warmupDir);
         file_put_contents($file = $warmupDir.'/kernel.tmp', $code);
         require_once $file;
         @unlink($file);
 
-        $class = "$namespace\\$class"; 
+        $class = "$namespace\\$class";
 
-        return new $class($parent->getEnvironment(), $debug);
+        return new $class($parent->getEnvironment(), $parent->isDebug());
     }
 }

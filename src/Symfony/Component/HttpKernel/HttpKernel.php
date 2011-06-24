@@ -35,8 +35,8 @@ class HttpKernel implements HttpKernelInterface
     /**
      * Constructor
      *
-     * @param EventDispatcherInterface $dispatcher An EventDispatcherInterface instance
-     * @param ControllerResolverInterface $resolver A ControllerResolverInterface instance
+     * @param EventDispatcherInterface    $dispatcher An EventDispatcherInterface instance
+     * @param ControllerResolverInterface $resolver   A ControllerResolverInterface instance
      */
     public function __construct(EventDispatcherInterface $dispatcher, ControllerResolverInterface $resolver)
     {
@@ -78,18 +78,18 @@ class HttpKernel implements HttpKernelInterface
      * Exceptions are not caught.
      *
      * @param Request $request A Request instance
-     * @param integer $type The type of the request (one of HttpKernelInterface::MASTER_REQUEST or HttpKernelInterface::SUB_REQUEST)
+     * @param integer $type    The type of the request (one of HttpKernelInterface::MASTER_REQUEST or HttpKernelInterface::SUB_REQUEST)
      *
      * @return Response A Response instance
      *
      * @throws \LogicException If one of the listener does not behave as expected
      * @throws NotFoundHttpException When controller cannot be found
      */
-    protected function handleRaw(Request $request, $type = self::MASTER_REQUEST)
+    private function handleRaw(Request $request, $type = self::MASTER_REQUEST)
     {
         // request
         $event = new GetResponseEvent($this, $request, $type);
-        $this->dispatcher->dispatch(Events::onCoreRequest, $event);
+        $this->dispatcher->dispatch(KernelEvents::REQUEST, $event);
 
         if ($event->hasResponse()) {
             return $this->filterResponse($event->getResponse(), $request, $type);
@@ -101,7 +101,7 @@ class HttpKernel implements HttpKernelInterface
         }
 
         $event = new FilterControllerEvent($this, $controller, $request, $type);
-        $this->dispatcher->dispatch(Events::onCoreController, $event);
+        $this->dispatcher->dispatch(KernelEvents::CONTROLLER, $event);
         $controller = $event->getController();
 
         // controller arguments
@@ -113,14 +113,20 @@ class HttpKernel implements HttpKernelInterface
         // view
         if (!$response instanceof Response) {
             $event = new GetResponseForControllerResultEvent($this, $request, $type, $response);
-            $this->dispatcher->dispatch(Events::onCoreView, $event);
+            $this->dispatcher->dispatch(KernelEvents::VIEW, $event);
 
             if ($event->hasResponse()) {
                 $response = $event->getResponse();
             }
 
             if (!$response instanceof Response) {
-                throw new \LogicException(sprintf('The controller must return a response (%s given).', $this->varToString($response)));
+                $msg = sprintf('The controller must return a response (%s given).', $this->varToString($response));
+
+                // the user may have forgotten to return something
+                if (null === $response) {
+                    $msg .= ' Did you forget to add a return statement somewhere in your controller?';
+                }
+                throw new \LogicException($msg);
             }
         }
 
@@ -131,18 +137,18 @@ class HttpKernel implements HttpKernelInterface
      * Filters a response object.
      *
      * @param Response $response A Response instance
-     * @param string   $message A error message in case the response is not a Response object
-     * @param integer  $type The type of the request (one of HttpKernelInterface::MASTER_REQUEST or HttpKernelInterface::SUB_REQUEST)
+     * @param Request  $request  A error message in case the response is not a Response object
+     * @param integer  $type     The type of the request (one of HttpKernelInterface::MASTER_REQUEST or HttpKernelInterface::SUB_REQUEST)
      *
      * @return Response The filtered Response instance
      *
      * @throws \RuntimeException if the passed object is not a Response instance
      */
-    protected function filterResponse(Response $response, Request $request, $type)
+    private function filterResponse(Response $response, Request $request, $type)
     {
         $event = new FilterResponseEvent($this, $request, $type, $response);
 
-        $this->dispatcher->dispatch(Events::onCoreResponse, $event);
+        $this->dispatcher->dispatch(KernelEvents::RESPONSE, $event);
 
         return $event->getResponse();
     }
@@ -156,22 +162,26 @@ class HttpKernel implements HttpKernelInterface
      *
      * @return Response A Response instance
      */
-    protected function handleException(\Exception $e, $request, $type)
+    private function handleException(\Exception $e, $request, $type)
     {
         $event = new GetResponseForExceptionEvent($this, $request, $type, $e);
-        $this->dispatcher->dispatch(Events::onCoreException, $event);
+        $this->dispatcher->dispatch(KernelEvents::EXCEPTION, $event);
 
         if (!$event->hasResponse()) {
             throw $e;
         }
 
-        return $this->filterResponse($event->getResponse(), $request, $type);
+        try {
+            return $this->filterResponse($event->getResponse(), $request, $type);
+        } catch (\Exception $e) {
+            return $event->getResponse();
+        }
     }
 
-    protected function varToString($var)
+    private function varToString($var)
     {
         if (is_object($var)) {
-            return sprintf('[object](%s)', get_class($var));
+            return sprintf('Object(%s)', get_class($var));
         }
 
         if (is_array($var)) {
@@ -180,13 +190,25 @@ class HttpKernel implements HttpKernelInterface
                 $a[] = sprintf('%s => %s', $k, $this->varToString($v));
             }
 
-            return sprintf("[array](%s)", implode(', ', $a));
+            return sprintf("Array(%s)", implode(', ', $a));
         }
 
         if (is_resource($var)) {
-            return '[resource]';
+            return sprintf('Resource(%s)', get_resource_type($var));
         }
 
-        return str_replace("\n", '', var_export((string) $var, true));
+        if (null === $var) {
+            return 'null';
+        }
+
+        if (false === $var) {
+            return 'false';
+        }
+
+        if (true === $var) {
+            return 'true';
+        }
+
+        return (string) $var;
     }
 }

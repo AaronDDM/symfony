@@ -47,7 +47,7 @@ class FlattenException
     public function toArray()
     {
         $exceptions = array();
-        foreach (array_merge(array($this), $this->getPreviouses()) as $exception) {
+        foreach (array_merge(array($this), $this->getAllPrevious()) as $exception) {
             $exceptions[] = array(
                 'message' => $exception->getMessage(),
                 'class'   => $exception->getClass(),
@@ -118,7 +118,7 @@ class FlattenException
         $this->previous = $previous;
     }
 
-    public function getPreviouses()
+    public function getAllPrevious()
     {
         $exceptions = array();
         $e = $this;
@@ -169,7 +169,7 @@ class FlattenException
         }
     }
 
-    protected function flattenArgs($args)
+    private function flattenArgs($args)
     {
         $result = array();
         foreach ($args as $key => $value) {
@@ -182,7 +182,7 @@ class FlattenException
             } elseif (is_bool($value)) {
                 $result[$key] = array('boolean', $value);
             } elseif (is_resource($value)) {
-                $result[$key] = array('resource', '');
+                $result[$key] = array('resource', get_resource_type($value));
             } else {
                 $result[$key] = array('string', (string) $value);
             }

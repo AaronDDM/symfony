@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Tests\Component\Validator;
+namespace Symfony\Tests\Component\Validator\Constraints;
 
 use Symfony\Component\Validator\ExecutionContext;
 use Symfony\Component\Validator\Constraints\Choice;
@@ -37,6 +37,11 @@ class ChoiceValidatorTest extends \PHPUnit_Framework_TestCase
         $context->setCurrentClass(__CLASS__);
         $this->validator = new ChoiceValidator();
         $this->validator->initialize($context);
+    }
+
+    protected function tearDown()
+    {
+        $this->validator = null;
     }
 
     public function testExpectArrayIfMultipleIsTrue()
@@ -135,7 +140,7 @@ class ChoiceValidatorTest extends \PHPUnit_Framework_TestCase
     {
         $constraint = new Choice(array(
             'choices' => array('foo', 'bar'),
-            'message' => 'myMessage',
+            'multipleMessage' => 'myMessage',
             'multiple' => true,
         ));
 

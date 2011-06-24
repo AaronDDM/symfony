@@ -25,15 +25,11 @@ class FileValidator extends ConstraintValidator
             return true;
         }
 
-        if (!is_scalar($value) && !$value instanceof FileObject && !(is_object($value) && method_exists($value, '__toString()'))) {
+        if (!is_scalar($value) && !$value instanceof FileObject && !(is_object($value) && method_exists($value, '__toString'))) {
             throw new UnexpectedTypeException($value, 'string');
         }
 
-        if ($value instanceof FileObject && null === $value->getPath()) {
-            return true;
-        }
-
-        $path = $value instanceof FileObject ? $value->getPath() : (string)$value;
+        $path = $value instanceof FileObject ? $value->getPathname() : (string) $value;
 
         if (!file_exists($path)) {
             $this->setMessage($constraint->notFoundMessage, array('{{ file }}' => $path));
@@ -48,7 +44,7 @@ class FileValidator extends ConstraintValidator
         }
 
         if ($constraint->maxSize) {
-            if (ctype_digit((string)$constraint->maxSize)) {
+            if (ctype_digit((string) $constraint->maxSize)) {
                 $size = filesize($path);
                 $limit = $constraint->maxSize;
                 $suffix = ' bytes';
@@ -66,9 +62,9 @@ class FileValidator extends ConstraintValidator
 
             if ($size > $limit) {
                 $this->setMessage($constraint->maxSizeMessage, array(
-                    '{{ size }}' => $size . $suffix,
-                    '{{ limit }}' => $limit . $suffix,
-                    '{{ file }}' => $path,
+                    '{{ size }}'    => $size.$suffix,
+                    '{{ limit }}'   => $limit.$suffix,
+                    '{{ file }}'    => $path,
                 ));
 
                 return false;
@@ -80,11 +76,11 @@ class FileValidator extends ConstraintValidator
                 $value = new FileObject($value);
             }
 
-            if (!in_array($value->getMimeType(), (array)$constraint->mimeTypes)) {
+            if (!in_array($value->getMimeType(), (array) $constraint->mimeTypes)) {
                 $this->setMessage($constraint->mimeTypesMessage, array(
-                    '{{ type }}' => '"'.$value->getMimeType().'"',
-                    '{{ types }}' => '"'.implode('", "', (array)$constraint->mimeTypes).'"',
-                    '{{ file }}' => $path,
+                    '{{ type }}'    => '"'.$value->getMimeType().'"',
+                    '{{ types }}'   => '"'.implode('", "', (array) $constraint->mimeTypes).'"',
+                    '{{ file }}'    => $path,
                 ));
 
                 return false;
